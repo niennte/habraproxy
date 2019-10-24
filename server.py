@@ -4,13 +4,13 @@ import sys
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import urllib.request
 import re
+from bs4 import BeautifulSoup, NavigableString
 
 DEFAULT_PORT = 8080
 DEFAULT_HOST = '127.0.0.1'
 
-
 class ProxyHandler(BaseHTTPRequestHandler):
-    """Handler override.
+    """Build a minimal handler on top of BaseHTTPRequestHandler.
     """
 
     REMOTE_SERVER = "https://habr.com"
@@ -59,12 +59,40 @@ class ProxyHandler(BaseHTTPRequestHandler):
             """
             return match.group(0) + '&trade;'
 
-        # select any text between tag borders that has no tags in it, send result to parse for specified words
-        content = re.sub(r'(?miux)>[^<>]+<', modify_renderable_text, content)
-        return content.encode('utf-8')
+        def strip_trademarks(string):
+            """Add trade mark after input.
+            """
+            return string.replace('&trade;', '')
 
+        # MODIFY TEXT:
+        # select any text between tag closing and opening borders containing no nested tags,
+        # send selection to parse for specified (6 char long) words,
+        # then add trademarks to matched words
+        renderable_text_re = re.compile(r"""
+            (?miux)>[^<>]+<
+            """, re.VERBOSE)
+        content = renderable_text_re.sub(modify_renderable_text, content)
 
+        # Unfortunately, while this is fast and effective,
+        # it catches some non-textual tags;
+        # fix these with parser
+        soup = BeautifulSoup(content, 'html.parser')
+        tags_re = re.compile(r"""
+            ^(script|style|svg|path)
+            """, re.VERBOSE)
+        for tag in soup.find_all(tags_re):
+            if tag.string:
+                tag_string = strip_trademarks(str(tag.string))
+                tag.string.replace_with(NavigableString(tag_string))
 
+        # Replace absolute links
+        # for link in soup.find_all('a'):
+        #     if link.get('href'):
+        #         link['href'] = link['href'].replace(self.REMOTE_SERVER, '')
+
+        content = soup.encode(formatter=None)
+
+        return content #.encode('utf-8')
 
 def run(server_class=HTTPServer, handler_class=ProxyHandler, addr=DEFAULT_HOST, port=DEFAULT_PORT):
     """Run the server.
@@ -75,7 +103,7 @@ def run(server_class=HTTPServer, handler_class=ProxyHandler, addr=DEFAULT_HOST, 
 
 
 try:
-    LISTENING_PORT = int(input("[*] Enter Listening Port Number: ") or DEFAULT_PORT)
+    LISTENING_PORT = int(input("[*] Enter Listening Port Number: [8080]") or DEFAULT_PORT)
     run(addr=DEFAULT_HOST, port=LISTENING_PORT)
 except KeyboardInterrupt:
     print("\n[*] Exiting ... Have a nice day! \n")
