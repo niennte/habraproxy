@@ -21,10 +21,15 @@ class ProxyHandler(BaseHTTPRequestHandler):
         """
         self.wfile.write(self._proxy_client())
 
-    def _proxy_client(self):
-        downstream_response = urllib.request.urlopen(
-            f"{self.REMOTE_SERVER}{self.path}"
-        )
+    def do_POST(self):
+        content_length = int(self.headers['Content-Length'])
+        post_data = self.rfile.read(content_length)
+        self.wfile.write(self._proxy_client(post_data))
+
+    def _proxy_client(self, data=None):
+        url = f"{self.REMOTE_SERVER}{self.path}"
+        print(f"{url}\n")
+        downstream_response = urllib.request.urlopen(url, data)
         content = downstream_response.read()
         content_type = downstream_response.info().get_content_type()
         encoding = downstream_response.info().get_content_charset()
