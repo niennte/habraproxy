@@ -25,9 +25,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
             f"{self.REMOTE_SERVER}{self.path}"
         )
         content = downstream_response.read()
-        content_type = downstream_response \
-            .info() \
-            .get_content_type()
+        content_type = downstream_response.info().get_content_type()
         self._set_headers(
             content_type,
             downstream_response.getcode()
@@ -44,11 +42,8 @@ class ProxyHandler(BaseHTTPRequestHandler):
     def _process_text_content(self, content):
         """Modify text rendered by browser as per spec
         """
-        content = content.decode('utf-8')
-        # Replace hard links with relative ones
-        content = content.replace(self.REMOTE_SERVER, '')
 
-        # helper functions
+        # private helper functions
         def modify_renderable_text(match):
             """Match words six characters long, send to be modified with the trade mark.
             """
@@ -64,35 +59,42 @@ class ProxyHandler(BaseHTTPRequestHandler):
             """
             return string.replace('&trade;', '')
 
-        # MODIFY TEXT:
-        # select any text between tag closing and opening borders containing no nested tags,
-        # send selection to parse for specified (6 char long) words,
-        # then add trademarks to matched words
-        renderable_text_re = re.compile(r"""
-            (?miux)>[^<>]+<
-            """, re.VERBOSE)
-        content = renderable_text_re.sub(modify_renderable_text, content)
+        try:
+            content = content.decode('utf-8')
+            # Make links relative
+            #* - unlike the parser, regex will catch usage in scripts, svgs, etc.
+            content = content.replace(self.REMOTE_SERVER, '')
 
-        # Unfortunately, while this is fast and effective,
-        # it catches some non-textual tags;
-        # fix these with parser
-        soup = BeautifulSoup(content, 'html.parser')
-        tags_re = re.compile(r"""
-            ^(script|style|svg|path)
-            """, re.VERBOSE)
-        for tag in soup.find_all(tags_re):
-            if tag.string:
-                tag_string = strip_trademarks(str(tag.string))
-                tag.string.replace_with(NavigableString(tag_string))
+            # address the parser's bug (not rendering &plus; entity)
+            content = content.replace('&plus;', '&#43;')
 
-        # Replace absolute links
-        # for link in soup.find_all('a'):
-        #     if link.get('href'):
-        #         link['href'] = link['href'].replace(self.REMOTE_SERVER, '')
 
-        content = soup.encode(formatter=None)
+            # MODIFY TEXT:
+            # select any text between tag closing and opening borders containing no nested tags,
+            # send selection to parse for specified (6 char long) words,
+            # then add trademarks to matched words
+            renderable_text_re = re.compile(r"""
+                (?miux)>[^<>]+<
+                """, re.VERBOSE)
+            content = renderable_text_re.sub(modify_renderable_text, content)
 
-        return content #.encode('utf-8')
+            # Unfortunately, while this is fast and effective,
+            # it mangles some non-textual tags;
+            # fix these with parser
+            soup = BeautifulSoup(content, 'html.parser')
+            tags_re = re.compile(r"""
+                ^(script|style|svg|path)
+                """, re.VERBOSE)
+            for tag in soup.find_all(tags_re):
+                if tag.string:
+                    tag_string = strip_trademarks(str(tag.string))
+                    tag.string.replace_with(NavigableString(tag_string))
+
+            return soup.encode()
+        except Exception:
+            print("\n[*] Couldn't decode (incorrect MIME type). \n")
+            return content
+
 
 def run(server_class=HTTPServer, handler_class=ProxyHandler, addr=DEFAULT_HOST, port=DEFAULT_PORT):
     """Run the server.
