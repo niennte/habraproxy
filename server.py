@@ -59,10 +59,11 @@ class ProxyHandler(BaseHTTPRequestHandler):
             """
             return match.group(0) + '&trade;'
 
-        def strip_trademarks(string):
+        def strip_trademarks(match):
             """Add trade mark after input.
             """
-            return string.replace('&trade;', '')
+            print(match.group(0))
+            return match.group(0).replace('&trade;', '')
 
         # MODIFY TEXT:
         # select any text between tag closing and opening borders containing no nested tags,
@@ -75,24 +76,13 @@ class ProxyHandler(BaseHTTPRequestHandler):
 
         # Unfortunately, while this is fast and effective,
         # it catches some non-textual tags;
-        # fix these with parser
-        soup = BeautifulSoup(content, 'html.parser')
-        tags_re = re.compile(r"""
-            ^(script|style|svg|path)
+        # fix these
+        non_renderable_text_re = re.compile(r"""
+            (?miuxs)<(script|style|svg|path).*?>(.*?)</\1>
             """, re.VERBOSE)
-        for tag in soup.find_all(tags_re):
-            if tag.string:
-                tag_string = strip_trademarks(str(tag.string))
-                tag.string.replace_with(NavigableString(tag_string))
+        content = non_renderable_text_re.sub(strip_trademarks, content)
 
-        # Replace absolute links
-        # for link in soup.find_all('a'):
-        #     if link.get('href'):
-        #         link['href'] = link['href'].replace(self.REMOTE_SERVER, '')
-
-        content = soup.encode(formatter=None)
-
-        return content #.encode('utf-8')
+        return content.encode('utf-8')
 
 def run(server_class=HTTPServer, handler_class=ProxyHandler, addr=DEFAULT_HOST, port=DEFAULT_PORT):
     """Run the server.
