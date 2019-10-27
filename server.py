@@ -14,6 +14,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
     """
 
     REMOTE_SERVER = "https://habr.com"
+    TM = "™"
 
     def do_GET(self):
         """Override do_GET superclass method with the proxy client.
@@ -26,12 +27,14 @@ class ProxyHandler(BaseHTTPRequestHandler):
         )
         content = downstream_response.read()
         content_type = downstream_response.info().get_content_type()
+        encoding = downstream_response.info().get_content_charset()
+
         self._set_headers(
             content_type,
             downstream_response.getcode()
         )
         if content_type == 'text/html':
-            content = self._process_text_content(content)
+            content = self._process_text_content(content, encoding)
         return content
 
     def _set_headers(self, content_type, status_code):
@@ -39,7 +42,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
         self.send_header("Content-type", content_type)
         self.end_headers()
 
-    def _process_text_content(self, content):
+    def _process_text_content(self, content, encoding='utf-8'):
         """Modify text rendered by browser as per spec
         """
 
@@ -52,15 +55,15 @@ class ProxyHandler(BaseHTTPRequestHandler):
         def add_trademark_to_selected(match):
             """Add trade mark after input.
             """
-            return match.group(0) + '&trade;'
+            return match.group(0) + self.TM
 
         def strip_trademarks(string):
             """Add trade mark after input.
             """
-            return string.replace('&trade;', '')
+            return string.replace(self.TM, '')
 
         try:
-            content = content.decode('utf-8')
+            content = content.decode(encoding)
             # Make links relative
             #* - unlike the parser, regex will catch usage in scripts, svgs, etc.
             content = content.replace(self.REMOTE_SERVER, '')
@@ -78,12 +81,12 @@ class ProxyHandler(BaseHTTPRequestHandler):
                 """, re.VERBOSE)
             content = renderable_text_re.sub(modify_renderable_text, content)
 
-            # Unfortunately, while this is fast and effective,
+            # Unfortunately, while this is faster and simpler than parsing,
             # it mangles some non-textual tags;
             # fix these with parser
             soup = BeautifulSoup(content, 'html.parser')
             tags_re = re.compile(r"""
-                ^(script|style|svg|path)
+                ^(script|style|svg|path|code)
                 """, re.VERBOSE)
             for tag in soup.find_all(tags_re):
                 if tag.string:
