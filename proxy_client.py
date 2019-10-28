@@ -28,7 +28,7 @@ class ProxyClient:
                 content_handler = ProxyContentHandler()
                 content = content_handler.handle_absolute_local_links(content, self.REMOTE_SERVER)
                 content = content_handler.handle_textual_content(content)
-            except Exception:
-                print("\n[*] Couldn't decode (incorrect MIME type). \n")
+            except TypeError:
+                print("\n[*] Couldn't decode document (incorrect content-type). \n")
 
         return content

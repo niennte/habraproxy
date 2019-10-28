@@ -9,23 +9,11 @@ class ProxyContentHandler:
     A class to process static content, as follows:
 
     (1) Handle links, including svg/use tags and JS base constants:
-        make links relative.
+        make links relative to root.
 
-    (2) Modify textual content :
+    (2) Modify textual content:
         add a trade mark sign after each six character long word rendered by the browser,
         with the exception of these within the code tag.
-
-    Implementation:
-        - extract all strings contained within HTML tags, sans nested tags,
-        from the HTML content string using regex
-        (appears more effective that traversing the DOM as requires no drilling down)
-        - send selection to parse for specified (6 char long) words and apply modifications
-        - parse the resulting HTML string semantically
-        and remove modifications wherever they disrupt behavior
-        (non-textual tags containing text e.g. script)
-        and where they make no sense (eg the code tag);
-        appears more effective as these are few
-        and guaranteed to have no child tags subject to treatment
     """
 
     # Note: the utf-8 is more consistently supported by the parser than HTML entities
@@ -51,7 +39,7 @@ class ProxyContentHandler:
 
     @staticmethod
     def handle_absolute_local_links(content, remote_server):
-        """Make links relative."""
+        """Make links relative to root."""
         return content.replace(remote_server, "")
 
     def handle_textual_content(self, content):
