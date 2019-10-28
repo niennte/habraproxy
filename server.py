@@ -8,7 +8,10 @@ DEFAULT_PORT = 8080
 DEFAULT_HOST = "127.0.0.1"
 
 
-def run(server_class=HTTPServer, handler_class=ProxyRequestHandler, addr=DEFAULT_HOST, port=DEFAULT_PORT):
+def run(server_class=HTTPServer,
+        handler_class=ProxyRequestHandler,
+        addr=DEFAULT_HOST,
+        port=DEFAULT_PORT):
     """Run the server."""
     httpd = server_class((addr, port), handler_class)
     print(f"Starting httpd server on {addr}:{port}")

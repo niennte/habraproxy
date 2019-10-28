@@ -1,3 +1,4 @@
+"""Module to deal with remote server communications."""
 import urllib.request
 
 from proxy_content_handler import ProxyContentHandler
@@ -9,6 +10,7 @@ class ProxyClient:
     REMOTE_SERVER = "https://habr.com"
 
     def proxy_GET(self, handler):
+        """GET the remote host, try to plocess content as required, return result."""
         url = f"{self.REMOTE_SERVER}{handler.path}"
         print(f"{url}\n")
         downstream_response = urllib.request.urlopen(url)
@@ -30,5 +32,3 @@ class ProxyClient:
                 print("\n[*] Couldn't decode (incorrect MIME type). \n")
 
         return content
-
-

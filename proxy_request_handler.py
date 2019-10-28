@@ -1,3 +1,4 @@
+"""A module to deal with request delegation."""
 from http.server import BaseHTTPRequestHandler
 
 from proxy_client import ProxyClient
@@ -12,7 +13,7 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
         self.wfile.write(client.proxy_GET(self))
 
     def set_headers(self, content_type, status_code):
+        """Pass on remote headers."""
         self.send_response(status_code)
         self.send_header("Content-type", content_type)
         self.end_headers()
-

@@ -1,3 +1,4 @@
+"""A module to deal with content modifications."""
 import re
 
 from bs4 import BeautifulSoup, NavigableString
@@ -21,8 +22,10 @@ class ProxyContentHandler:
         - send selection to parse for specified (6 char long) words and apply modifications
         - parse the resulting HTML string semantically
         and remove modifications wherever they disrupt behavior
-        (non-textual tags containing text e.g. script) and where they make no sense (eg the code tag);
-        appears more effective as these are few and guaranteed to have no child tags subject to treatment
+        (non-textual tags containing text e.g. script)
+        and where they make no sense (eg the code tag);
+        appears more effective as these are few
+        and guaranteed to have no child tags subject to treatment
     """
 
     # Note: the utf-8 is more consistently supported by the parser than HTML entities
@@ -47,9 +50,9 @@ class ProxyContentHandler:
         """, re.VERBOSE)
 
     @staticmethod
-    def handle_absolute_local_links(content, REMOTE_SERVER):
+    def handle_absolute_local_links(content, remote_server):
         """Make links relative."""
-        return content.replace(REMOTE_SERVER, "")
+        return content.replace(remote_server, "")
 
     def handle_textual_content(self, content):
         """Modify text rendered by browser, as per spec."""
